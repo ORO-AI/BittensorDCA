@@ -1,187 +1,187 @@
 # Bittensor DCA Stake
 
-Simple cron-based Dollar Cost Averaging (DCA) for Bittensor subnet staking.
+Simple automated Dollar Cost Averaging (DCA) into Bittensor subnets.
 
-Run via cron to automatically stake TAO at regular intervals with built-in liquidity protection.
+---
 
-## Features
+## Step 1: Buy TAO
 
-- **Simple**: Single script, runs once and exits
-- **Cron-friendly**: Schedule with standard cron jobs
-- **Safe**: Liquidity checks before staking
-- **Flexible**: Single subnet or whitelist mode
+Purchase TAO from any of these exchanges:
 
-## Quick Start
+| Exchange | Link |
+|----------|------|
+| **Coinbase** | [coinbase.com](https://www.coinbase.com) |
+| **Kraken** | [kraken.com](https://www.kraken.com) |
+| **Binance** | [binance.com](https://www.binance.com) |
 
-### 1. Install Dependencies
+Search for "TAO" or "Bittensor" and buy your desired amount.
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
+---
 
-### 2. Configure
+## Step 2: Create a Bittensor Wallet
 
-Edit `config.yaml`:
-
-```yaml
-wallet_name: "your-wallet"
-validator_hotkey: "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3"
-stake_amount: 0.1
-target_netuid: 15                # Your target subnet
-min_liquidity_ratio: 10.0        # Pool must have 10x stake amount
-```
-
-### 3. Set Wallet Password
+Install Bittensor and create a wallet:
 
 ```bash
-export WALLET_PASSWORD="your-password"
+pip install bittensor
+btcli wallet create --wallet.name default
 ```
 
-Or create a password file:
+Save your mnemonic phrase securely. This is your backup.
+
+Your wallet address will be displayed (starts with `5...`). Copy it.
+
+---
+
+## Step 3: Transfer TAO to Your Wallet
+
+On the exchange, withdraw your TAO to the wallet address from Step 2.
+
+Verify it arrived:
 ```bash
-echo "your-password" > ~/.bittensor/.wallet_password
+btcli wallet balance --wallet.name default
+```
+
+---
+
+## Step 4: Setup DCA Script
+
+```bash
+# Clone and setup (one command)
+git clone https://github.com/ORO-AI/BittensorDCA.git && cd BittensorDCA && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+```
+
+Save your wallet password (so the script can auto-unlock):
+```bash
+echo "your-wallet-password" > ~/.bittensor/.wallet_password
 chmod 600 ~/.bittensor/.wallet_password
 ```
 
-### 4. Test (Dry Run)
-
-```bash
-python dca_stake.py --dry-run
-```
-
-### 5. Run
-
-```bash
-python dca_stake.py
-```
-
----
-
-## Cron Setup
-
-Edit crontab:
-```bash
-crontab -e
-```
-
-Add your schedule:
-
-```bash
-# Set password (required)
-WALLET_PASSWORD=your-password-here
-
-# === Example Schedules ===
-
-# Every 6 hours (recommended for moderate DCA)
-0 */6 * * * cd /path/to/DCABot && .venv/bin/python dca_stake.py
-
-# Daily at 2:00 AM UTC
-0 2 * * * cd /path/to/DCABot && .venv/bin/python dca_stake.py
-
-# Hourly (aggressive DCA)
-0 * * * * cd /path/to/DCABot && .venv/bin/python dca_stake.py
-
-# Every 4 hours
-0 */4 * * * cd /path/to/DCABot && .venv/bin/python dca_stake.py
-```
-
----
-
-## Configuration Reference
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `wallet_name` | required | Bittensor wallet name |
-| `validator_hotkey` | required | Validator hotkey SS58 address |
-| `stake_amount` | required | TAO amount per stake |
-| `target_netuid` | null | Single subnet to stake into |
-| `whitelist` | [] | List of subnets (picks best scoring) |
-| `min_liquidity_ratio` | 10.0 | Pool liquidity / stake amount ratio |
-| `network` | finney | Network: finney, test, local |
-| `log_file` | logs/dca.log | Log file path |
-| `dry_run` | false | Preview without staking |
-
-### Target Modes
-
-**Single Subnet** (recommended):
+Edit `config.yaml` with your settings:
 ```yaml
-target_netuid: 15
-```
-
-**Whitelist** (picks best from list):
-```yaml
-target_netuid: null
-whitelist: [15, 22, 48]
+wallet_name: "default"
+stake_amount: 0.1                # TAO per buy
+target_netuid: 15                # Subnet to stake into
 ```
 
 ---
 
-## Protection Mechanisms
+## Step 5: Test It
 
-### Liquidity Check
-Pool must have at least `min_liquidity_ratio` times your stake amount:
-```
-Required: pool_tao >= stake_amount * min_liquidity_ratio
+```bash
+.venv/bin/python dca_stake.py --dry-run
 ```
 
-**Example**: With default 10x ratio, staking 1 TAO requires the pool to have 10+ TAO.
-
-Note: Slippage protection is handled natively by btcli.
+You should see it connect and show what it would stake.
 
 ---
 
-## Exit Codes
+## Step 6: Schedule Automatic Buys
 
-| Code | Meaning |
-|------|---------|
-| 0 | Success OR graceful skip (conditions not met) |
-| 1 | Error (config, network, wallet, transaction) |
+Run this command to set up automatic DCA every 2 hours:
 
-Cron can use exit codes for alerting on actual failures.
+```bash
+(crontab -l 2>/dev/null; echo "0 */2 * * * cd $(pwd) && $(pwd)/.venv/bin/python dca_stake.py >> $(pwd)/logs/cron.log 2>&1") | crontab -
+```
+
+**Other schedules:**
+- Every hour: `0 * * * *`
+- Every 4 hours: `0 */4 * * *`
+- Every 6 hours: `0 */6 * * *`
+- Daily at 2am: `0 2 * * *`
+
+To view your schedule: `crontab -l`
+To remove: `crontab -r`
 
 ---
 
-## Logs
+## Important: Mac Sleep Behavior
 
-Logs are written to both stdout (for cron MAILTO) and the configured log file.
+**Cron jobs do NOT run while your Mac is asleep.** Missed jobs are skipped, not caught up.
 
+### Option A: Wake Mac for DCA (Recommended for laptops)
+
+Set your Mac to wake automatically at your DCA times:
+
+```bash
+# Wake every 2 hours (matches default schedule)
+sudo pmset repeat wake MTWRFSU 00:00:00
+sudo pmset repeat wake MTWRFSU 02:00:00
+sudo pmset repeat wake MTWRFSU 04:00:00
+sudo pmset repeat wake MTWRFSU 06:00:00
+sudo pmset repeat wake MTWRFSU 08:00:00
+sudo pmset repeat wake MTWRFSU 10:00:00
+sudo pmset repeat wake MTWRFSU 12:00:00
+sudo pmset repeat wake MTWRFSU 14:00:00
+sudo pmset repeat wake MTWRFSU 16:00:00
+sudo pmset repeat wake MTWRFSU 18:00:00
+sudo pmset repeat wake MTWRFSU 20:00:00
+sudo pmset repeat wake MTWRFSU 22:00:00
 ```
-2025-01-25 14:00:01 | INFO     | Starting DCA stake run
-2025-01-25 14:00:02 | INFO     | Connected to finney
-2025-01-25 14:00:02 | INFO     | Subnet 15 (ORO): Price = 1.234567 TAO
-2025-01-25 14:00:02 | INFO     | Liquidity check: Pool: 500.00 TAO > 1.00 TAO required
-2025-01-25 14:00:05 | INFO     | SUCCESS: Staked 0.1 TAO to subnet 15 (ORO)
+
+To clear wake schedule: `sudo pmset repeat cancel`
+
+### Option B: Run on Always-On Server (Best reliability)
+
+For 24/7 reliability, run on:
+- A cheap VPS ($5/month from DigitalOcean, Vultr, etc.)
+- A Raspberry Pi at home
+- Any always-on Linux machine
+
+Just copy the repo, run the setup, and add the cron job.
+
+---
+
+## Manual Run
+
+To stake manually anytime:
+
+```bash
+cd BittensorDCA
+.venv/bin/python dca_stake.py
 ```
 
 ---
 
-## Command Line Options
+## Check Logs
 
+```bash
+tail -f logs/cron.log
 ```
-python dca_stake.py [OPTIONS]
 
-Options:
-  --config, -c PATH    Config file path (default: config.yaml)
-  --dry-run, -n        Preview without staking
-```
+---
+
+## Configuration Options
+
+Edit `config.yaml`:
+
+| Option | Description |
+|--------|-------------|
+| `wallet_name` | Your Bittensor wallet name |
+| `stake_amount` | TAO to stake per run |
+| `target_netuid` | Subnet ID to stake into |
+| `min_liquidity_ratio` | Safety check (default: 10x) |
+| `dry_run` | Set `true` to test without staking |
 
 ---
 
 ## Troubleshooting
 
 **"Wallet password not found"**
-- Set `WALLET_PASSWORD` environment variable, or
-- Create `~/.bittensor/.wallet_password` file
+```bash
+echo "your-password" > ~/.bittensor/.wallet_password
+chmod 600 ~/.bittensor/.wallet_password
+```
 
 **"Insufficient liquidity"**
-- Pool doesn't have enough TAO for safe staking
-- Wait for more liquidity or reduce `stake_amount`
+- The subnet pool is too small for safe staking
+- Try a smaller `stake_amount` or wait for more liquidity
 
-**"Subnet not found"**
-- Check `target_netuid` is correct
-- Verify subnet exists on the network
+**Check if cron is running:**
+```bash
+crontab -l
+tail -20 logs/cron.log
+```
 
 ---
 

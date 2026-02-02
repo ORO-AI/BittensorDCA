@@ -1,0 +1,4 @@
+# DCA Stake Dependencies
+bittensor>=8.0.0
+pyyaml>=6.0
+tenacity>=8.0.0

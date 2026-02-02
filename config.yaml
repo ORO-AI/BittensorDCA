@@ -1,31 +1,45 @@
-wallet: <your-wallet-name>
-stake_amount: 0.1
-validator: 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+# ============================================================
+# DCA Stake Configuration
+# ============================================================
+# Run via cron: python dca_stake.py
+# Test first:   python dca_stake.py --dry-run
+# ============================================================
 
-# BLACKLIST: Never stake in these subnets
-exclude_list: []
+# --- Wallet Configuration ---
+wallet_name: "new-alluvit"                        # Your Bittensor wallet name
 
-# WHITELIST: ONLY stake in these subnets (takes precedence over exclude_list)
-# When non-empty, the bot will ONLY DCA into these subnets
-include_list: []
-# Example: include_list: [107]  # Only DCA into subnet 107
+# --- Staking Target ---
+validator_hotkey: "5Et5W6p3PAccH2cA5KwgKPMsPMFtCDYrDx4BXz8RkxpAoFFj" # ORO validator hotkey
+stake_amount: 0.01                            # TAO to stake per run
 
-# MEV PROTECTION: Maximum acceptable slippage/price impact
-# 0.02 = 2% max slippage. Lower = more protection but may reject more trades
-max_slippage: 0.02
+# Target Selection - Choose ONE approach:
+#
+# Option A: Single subnet (recommended for most users)
+target_netuid: 15                             # Stake only into this subnet
+#
+# Option B: Whitelist mode (picks subnets from list)
+# target_netuid: null                         # Set to null to enable whitelist
+# whitelist: [15, 22, 48]                     # Choose best from these subnets
 
-# LIQUIDITY PROTECTION: Minimum ratio of pool liquidity to stake amount
-# 10.0 means pool must have at least 10x your stake amount in liquidity
-# Note: With 10x ratio, max price impact is ~9.1% - this is by design
-min_liquidity_ratio: 10.0
+# --- Protection Settings ---
+min_liquidity_ratio: 10.0                     # Pool must have 10x stake amount
 
-# Telegram configuration
-telegram_token: "<your-telegram-bot-token>"
-telegram_chat_id: "<your-chat-id>"
-telegram_update_interval: 100
+# --- Options ---
+network: "finney"                             # finney, test, or local
+log_file: "logs/dca.log"                      # Log file path
+dry_run: false                                # Set true to test without staking
 
-# Preference multipliers (optional - only needed if DCA-ing across multiple subnets)
-# Default is 1.0 for any subnet not listed
-# Example: "22": 2.0 would double the score for subnet 22
-preferences:
-  "0": 0.0  # Never select root network
+# ============================================================
+# Cron Examples (add to crontab -e):
+#
+# Every 6 hours:
+#   0 */6 * * * cd /path/to/DCABot && python dca_stake.py
+#
+# Daily at 2am UTC:
+#   0 2 * * * cd /path/to/DCABot && python dca_stake.py
+#
+# Every hour:
+#   0 * * * * cd /path/to/DCABot && python dca_stake.py
+#
+# Don't forget to set WALLET_PASSWORD in crontab!
+# ============================================================

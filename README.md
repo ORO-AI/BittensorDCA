@@ -78,57 +78,60 @@ You should see it connect and show what it would stake.
 
 ## Step 6: Schedule Automatic Buys
 
-Run this command to set up automatic DCA every 2 hours:
+### Why DCA?
+
+Subnet liquidity pools start small and grow over time. If you try to stake a large amount at once, you'll either:
+- Get rejected by the liquidity check (pool too small)
+- Move the price significantly against yourself
+
+DCA solves this by staking small amounts regularly as liquidity grows. The pool gets deeper every day, so your daily buys become more efficient over time.
+
+### Recommended: Once Daily
+
+**Daily at 2pm is the simplest approach** - one buy per day, easy to track:
 
 ```bash
-(crontab -l 2>/dev/null; echo "0 */2 * * * cd $(pwd) && $(pwd)/.venv/bin/python dca_stake.py >> $(pwd)/logs/cron.log 2>&1") | crontab -
+(crontab -l 2>/dev/null; echo "0 14 * * * cd $(pwd) && $(pwd)/.venv/bin/python dca_stake.py >> $(pwd)/logs/cron.log 2>&1") | crontab -
 ```
 
 **Other schedules:**
-- Every hour: `0 * * * *`
-- Every 4 hours: `0 */4 * * *`
-- Every 6 hours: `0 */6 * * *`
 - Daily at 2am: `0 2 * * *`
+- Daily at 8am: `0 8 * * *`
+- Twice daily (8am & 8pm): `0 8,20 * * *`
+- Every 6 hours: `0 */6 * * *`
 
 To view your schedule: `crontab -l`
 To remove: `crontab -r`
 
 ---
 
-## Important: Mac Sleep Behavior
+## Note: Mac Sleep Behavior
 
-**Cron jobs do NOT run while your Mac is asleep.** Missed jobs are skipped, not caught up.
+**Cron jobs do NOT run while your Mac is asleep.** Missed jobs are skipped.
 
-### Option A: Wake Mac for DCA (Recommended for laptops)
+**Good news:** If you schedule your daily buy during hours you normally use your laptop (e.g., 2pm), you likely won't need to do anything special. Your Mac will be awake and the cron job will run.
 
-Set your Mac to wake automatically at your DCA times:
+### If You Need Overnight Buys
+
+If you want buys while your Mac sleeps, set it to wake **2 minutes before** your scheduled buy time:
 
 ```bash
-# Wake every 2 hours (matches default schedule)
-sudo pmset repeat wake MTWRFSU 00:00:00
-sudo pmset repeat wake MTWRFSU 02:00:00
-sudo pmset repeat wake MTWRFSU 04:00:00
-sudo pmset repeat wake MTWRFSU 06:00:00
-sudo pmset repeat wake MTWRFSU 08:00:00
-sudo pmset repeat wake MTWRFSU 10:00:00
-sudo pmset repeat wake MTWRFSU 12:00:00
-sudo pmset repeat wake MTWRFSU 14:00:00
-sudo pmset repeat wake MTWRFSU 16:00:00
-sudo pmset repeat wake MTWRFSU 18:00:00
-sudo pmset repeat wake MTWRFSU 20:00:00
-sudo pmset repeat wake MTWRFSU 22:00:00
+# Example: Buy at 2:00 AM, wake at 1:58 AM
+sudo pmset repeat wake MTWRFSU 01:58:00
 ```
+
+The Mac will wake, cron runs at 2:00 AM, then it sleeps again.
 
 To clear wake schedule: `sudo pmset repeat cancel`
 
-### Option B: Run on Always-On Server (Best reliability)
+### For Best Reliability: Always-On Server
 
-For 24/7 reliability, run on:
+For guaranteed 24/7 execution, run on:
 - A cheap VPS ($5/month from DigitalOcean, Vultr, etc.)
 - A Raspberry Pi at home
 - Any always-on Linux machine
 
-Just copy the repo, run the setup, and add the cron job.
+Just copy the repo, run the setup, and add the cron job. But this is optional - daily buys during waking hours work fine for most people.
 
 ---
 

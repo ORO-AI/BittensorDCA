@@ -23,6 +23,9 @@ target_netuid: 15                             # Stake only into this subnet
 
 # --- Protection Settings ---
 min_liquidity_ratio: 10.0                     # Pool must have 10x stake amount
+max_price: 0.004                              # Only stake if price <= this (TAO per Alpha)
+max_slippage: 0.05                            # Max 5% price slippage during execution
+max_jitter_seconds: 10                        # Random delay 0-N seconds before execution
 
 # --- Options ---
 network: "finney"                             # finney, test, or local

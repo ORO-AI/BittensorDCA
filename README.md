@@ -164,6 +164,9 @@ Edit `config.yaml`:
 | `stake_amount` | TAO to stake per run |
 | `target_netuid` | Subnet ID to stake into |
 | `min_liquidity_ratio` | Safety check (default: 10x) |
+| `max_price` | Only stake when price <= this value (TAO) |
+| `max_slippage` | Max price change during execution (default: 0.05 = 5%) |
+| `max_jitter_seconds` | Random delay before execution (default: 0) |
 | `dry_run` | Set `true` to test without staking |
 
 ---
@@ -185,6 +188,14 @@ chmod 600 ~/.bittensor/.wallet_password
 crontab -l
 tail -20 logs/cron.log
 ```
+
+**"Price exceeds max_price - skipping stake"**
+- Current price is above your `max_price` threshold
+- This is expected - stake will occur when price drops
+
+**"Stake transaction returned failure" (with slippage protection)**
+- Price moved more than `max_slippage` during execution
+- This protects you from buying at unexpectedly high prices
 
 ---
 

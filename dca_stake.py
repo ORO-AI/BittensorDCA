@@ -19,6 +19,8 @@ import sys
 import os
 import logging
 import argparse
+import random
+import time
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Optional, List, Tuple
@@ -38,6 +40,9 @@ class Config:
     target_netuid: Optional[int]
     whitelist: List[int]
     min_liquidity_ratio: float
+    max_price: Optional[float]
+    max_slippage: float
+    max_jitter_seconds: int
     network: str
     log_file: str
     dry_run: bool
@@ -67,6 +72,9 @@ def load_config(config_path: str = "config.yaml") -> Config:
         target_netuid=data.get("target_netuid"),
         whitelist=data.get("whitelist", []),
         min_liquidity_ratio=float(data.get("min_liquidity_ratio", 10.0)),
+        max_price=float(data["max_price"]) if data.get("max_price") is not None else None,
+        max_slippage=float(data.get("max_slippage", 0.05)),
+        max_jitter_seconds=int(data.get("max_jitter_seconds", 0)),
         network=data.get("network", "finney"),
         log_file=data.get("log_file", "logs/dca.log"),
         dry_run=data.get("dry_run", False),
@@ -264,10 +272,11 @@ async def execute_stake(
     validator_hotkey: str,
     netuid: int,
     amount: float,
+    max_slippage: float,
     log: logging.Logger
 ) -> bool:
-    """Execute the stake transaction."""
-    log.info(f"Executing stake: {amount} TAO to subnet {netuid}...")
+    """Execute the stake transaction with slippage protection."""
+    log.info(f"Executing stake: {amount} TAO to subnet {netuid} (max slippage: {max_slippage:.1%})...")
 
     result = await subtensor.add_stake(
         wallet=wallet,
@@ -275,7 +284,9 @@ async def execute_stake(
         netuid=netuid,
         amount=bt.Balance.from_tao(amount),
         wait_for_inclusion=True,
-        wait_for_finalization=False
+        wait_for_finalization=False,
+        safe_staking=True,
+        rate_tolerance=max_slippage,
     )
 
     return result
@@ -285,6 +296,12 @@ async def execute_stake(
 
 async def run(config: Config, log: logging.Logger) -> int:
     """Main execution logic. Returns exit code."""
+
+    # Apply jitter if configured
+    if config.max_jitter_seconds > 0:
+        jitter = random.randint(0, config.max_jitter_seconds)
+        log.info(f"Applying {jitter}s jitter before execution")
+        time.sleep(jitter)
 
     # Connect to Bittensor
     try:
@@ -346,6 +363,13 @@ async def run(config: Config, log: logging.Logger) -> int:
             log.error("Invalid subnet price data")
             return 1
 
+        # Check price threshold
+        if config.max_price is not None:
+            if price > config.max_price:
+                log.warning(f"Price {price:.6f} TAO exceeds max_price {config.max_price:.6f} TAO - skipping stake")
+                return 0  # Graceful exit
+            log.info(f"Price check: {price:.6f} TAO <= {config.max_price:.6f} TAO (max) - OK")
+
         # Check liquidity
         liquidity_ok, tao_in_pool, liquidity_msg = check_liquidity(
             subnet, config.stake_amount, config.min_liquidity_ratio
@@ -367,6 +391,7 @@ async def run(config: Config, log: logging.Logger) -> int:
                 config.validator_hotkey,
                 subnet.netuid,
                 config.stake_amount,
+                config.max_slippage,
                 log
             )
             if success:
